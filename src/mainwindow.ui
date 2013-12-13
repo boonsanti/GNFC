@@ -110,7 +110,7 @@
        <enum>Qt::LeftToRight</enum>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tabMF1ICS50">
        <attribute name="title">
@@ -923,7 +923,7 @@
      <x>0</x>
      <y>0</y>
      <width>739</width>
-     <height>20</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

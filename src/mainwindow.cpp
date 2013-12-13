@@ -12,25 +12,12 @@
 #include "nfc/nfc.h"
 #include "nfc/nfc-emulation.h"
 
-#include "nfc/mac.h"
-#include "nfc/llcp.h"
-#include "nfc/llc_link.h"
-#include "nfc/llc_service.h"
-#include "nfc/llc_connection.h"
-
 #include "freefare.h"
-
-#include "ndef/libndef_global.h"
-#include "ndef/ndefmessage.h"
-#include "ndef/ndefrecord.h"
-#include "ndef/ndefrecordtype.h"
-#include "ndef/tlv.h"
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "pn532_extend_cmd.h"
 #include "mf1ics50writeblock.h"
-#include "snepClient.h"
 
 void sleep(unsigned int msec)
 {
@@ -41,7 +28,7 @@ void sleep(unsigned int msec)
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::MainWindow), snepClient(new snepClientThread), snepServer(new snepServerThread)
+    ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
     wbDialog = new mf1ics50WriteBlock(this);
@@ -60,8 +47,6 @@ MainWindow::~MainWindow()
     context = NULL;
 
     delete wbDialog;
-    delete snepClient;
-    delete snepServer;
     delete ui;
 }
 
@@ -87,6 +72,14 @@ void MainWindow::refresh()
 {
     ui->comboBoxSerialDevice->clear();
 
+    foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts()) {
+           qDebug() << "Name        : " << info.portName();
+           qDebug() << "Description : " << info.description();
+           qDebug() << "Manufacturer: " << info.manufacturer();
+           ui->comboBoxSerialDevice->addItem(info.portName());
+    }
+
+#if 0
     QDir serialDir("/dev/serial/by-id");
     QFileInfoList serialFileList = serialDir.entryInfoList(QDir::Readable | QDir::Writable | \
                                                         QDir::NoDotAndDotDot | QDir::Files);
@@ -99,6 +92,7 @@ void MainWindow::refresh()
             ui->comboBoxSerialDevice->addItem(serialFileList.at(i).symLinkTarget());
         }
     }
+#endif
 }
 
 void MainWindow::beep(void)
@@ -203,12 +197,6 @@ void MainWindow::init(void)
 
     passwdInit();
 
-    /** NDEF */
-    connect(ui->ndefPush, SIGNAL(clicked()), this, SLOT(ndefPush()));
-    connect(snepClient, SIGNAL(finished()), this, SLOT(ndefPushed()));
-    connect(ui->ndefPull, SIGNAL(clicked()), this, SLOT(ndefPull()));
-    connect(snepServer, SIGNAL(finished()), this, SLOT(ndefPulled()));
-    connect(snepServer, SIGNAL(sendNdefMessage(QString)), this, SLOT(ndefTextPulled(QString)));
 }
 
 
@@ -311,49 +299,49 @@ void MainWindow :: test()
     qDebug() << "Index: " << ui->sectorComboBox->currentIndex();
 }
 
-void MainWindow :: ndefPush(void)
-{
-    ui->ndefPush->setEnabled(false);
-    QString str=ui->pushURL->text();
-    if(!snepClient->setNdefMessage(str)){
-        sysLog("URL is invalid.");
-        ui->ndefPush->setEnabled(true);
-        return;
-    }
-    snepClient->init(&pnd);
-    snepClient->start();
-}
+//void MainWindow :: ndefPush(void)
+//{
+//    ui->ndefPush->setEnabled(false);
+//    QString str=ui->pushURL->text();
+//    if(!snepClient->setNdefMessage(str)){
+//        sysLog("URL is invalid.");
+//        ui->ndefPush->setEnabled(true);
+//        return;
+//    }
+//    snepClient->init(&pnd);
+//    snepClient->start();
+//}
 
-void MainWindow :: ndefPushed(void)
-{
-    qDebug() << "ndefpush set enabled.";
-    ui->ndefPush->setEnabled(true);
-}
+//void MainWindow :: ndefPushed(void)
+//{
+//    qDebug() << "ndefpush set enabled.";
+//    ui->ndefPush->setEnabled(true);
+//}
 
-void MainWindow :: ndefPull()
-{
-    ui->ndefPull->setEnabled(false);
-    if(snepServer->init(&pnd)<0){
-        sysLog("NDEF PULL init failed.");
-        return;
-    }
-    snepServer->start();
-}
+//void MainWindow :: ndefPull()
+//{
+//    ui->ndefPull->setEnabled(false);
+//    if(snepServer->init(&pnd)<0){
+//        sysLog("NDEF PULL init failed.");
+//        return;
+//    }
+//    snepServer->start();
+//}
 
-void MainWindow :: ndefPulled()
-{
-    qDebug() << "ndefpull set enabled.";
-    ui->ndefPull->setEnabled(true);
-}
+//void MainWindow :: ndefPulled()
+//{
+//    qDebug() << "ndefpull set enabled.";
+//    ui->ndefPull->setEnabled(true);
+//}
 
-void MainWindow :: ndefTextPulled(QString str)
-{
-    qDebug() << "Text is received.";
-    if(str.isEmpty()){
-        return;
-    }
-    ui->pullText->setText(str);
-}
+//void MainWindow :: ndefTextPulled(QString str)
+//{
+//    qDebug() << "Text is received.";
+//    if(str.isEmpty()){
+//        return;
+//    }
+//    ui->pullText->setText(str);
+//}
 
 void MainWindow :: sysLog(QString str)
 {
