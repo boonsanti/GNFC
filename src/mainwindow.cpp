@@ -14,7 +14,6 @@
 
 #include "freefare.h"
 
-#if Q_OS_LINUX
 #include "nfc/mac.h"
 #include "nfc/llcp.h"
 #include "nfc/llc_link.h"
@@ -26,7 +25,6 @@
 #include "ndef/ndefrecord.h"
 #include "ndef/ndefrecordtype.h"
 #include "ndef/tlv.h"
-#endif /** Q_OS_LINUX */
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -42,11 +40,7 @@ void sleep(unsigned int msec)
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-#ifdef Q_OS_WIN32
-    ui(new Ui::MainWindow)
-#else /** Q_OS_WIN32 */
     ui(new Ui::MainWindow), snepClient(new snepClientThread), snepServer(new snepServerThread)
-#endif /** Q_OS_WIN32 */
 {
     ui->setupUi(this);
     wbDialog = new mf1ics50WriteBlock(this);
@@ -67,10 +61,8 @@ MainWindow::~MainWindow()
 
     delete wbDialog;
 
-#ifdef Q_OS_LINUX
     delete snepClient;
     delete snepServer;
-#endif
 
     delete ui;
 }
@@ -139,7 +131,11 @@ void MainWindow::refresh()
 void MainWindow::beep(void)
 {
     if(ui->checkBoxBeep->isChecked()){
-        pn532ExCmd->beep(pnd);
+        if(ui->rbUART->isChecked()){
+            pn532ExCmd->beep(pnd);
+        }else if(ui->rbNET->isChecked()){
+            /* fix me: net device beep function */
+        }
     }
     sleep(1);
 }
@@ -244,30 +240,41 @@ void MainWindow::init(void)
 
     passwdInit();
 
-#ifdef Q_OS_LINUX
     /** NDEF */
     connect(ui->ndefPush, SIGNAL(clicked()), this, SLOT(ndefPush()));
     connect(snepClient, SIGNAL(finished()), this, SLOT(ndefPushed()));
     connect(ui->ndefPull, SIGNAL(clicked()), this, SLOT(ndefPull()));
     connect(snepServer, SIGNAL(finished()), this, SLOT(ndefPulled()));
     connect(snepServer, SIGNAL(sendNdefMessage(QString)), this, SLOT(ndefTextPulled(QString)));
-#endif
 
-#ifdef Q_OS_WIN32
-    /** Remove NDEF and CardEmulate tabs,
-     *  Windows platform does not support these functions,
-     *  because of libllcp library.
-     */
+    /** device select */
+    ui->lineEditIP->setEnabled(false);
+    ui->lineEditPort->setEnabled(false);
+    connect(ui->rbNET, SIGNAL(toggled(bool)), this, SLOT(deviceSelect()));
+
     ui->tabWidget->removeTab(2);
-    ui->tabWidget->removeTab(1);
-#endif
-
 }
 
+void MainWindow :: deviceSelect(void)
+{
+    if(ui->rbNET->isChecked()){
+        ui->lineEditIP->setEnabled(true);
+        ui->lineEditPort->setEnabled(true);
+        ui->comboBoxSerialDevice->setEnabled(false);
+        ui->refreshButton->setEnabled(false);
+    }else if (ui->rbUART->isChecked()){
+        ui->lineEditIP->setEnabled(false);
+        ui->lineEditPort->setEnabled(false);
+        ui->comboBoxSerialDevice->setEnabled(true);
+        ui->refreshButton->setEnabled(true);
+    }
+}
 
 void MainWindow::openClose(void)
 {
     ui->openCloseButton->setEnabled(false);
+    ui->rbNET->setEnabled(false);
+    ui->rbUART->setEnabled(false);
 
     if(ui->openCloseButton->text() == "Close"){
 
@@ -278,29 +285,46 @@ void MainWindow::openClose(void)
             nfc_exit(context);
         pnd = NULL, context = NULL;
 
-        sysLog(ui->comboBoxSerialDevice->currentText() + " closed.");
-        ui->refreshButton->setEnabled(true);
-        ui->comboBoxSerialDevice->setEnabled(true);
+        if(ui->rbUART->isChecked()){
+            /** print log info, enable uart device */
+            sysLog(ui->comboBoxSerialDevice->currentText() + " closed.");
+            ui->refreshButton->setEnabled(true);
+            ui->comboBoxSerialDevice->setEnabled(true);
+        }else if(ui->rbNET->isChecked()){
+            ui->lineEditIP->setEnabled(true);
+            ui->lineEditPort->setEnabled(true);
+        }
+
+        ui->rbNET->setEnabled(true);
+        ui->rbUART->setEnabled(true);
         ui->openCloseButton->setText("Open");
         ui->openCloseButton->setEnabled(true);
         ui->tabWidget->setEnabled(false);
         return;
     }
 
-    if(ui->comboBoxSerialDevice->count()<=0){
-        sysLog("ERROR: No device found.");
-        ui->openCloseButton->setEnabled(true);
-        return;
-    }
-    if(ui->comboBoxSerialDevice->currentText().isEmpty()){
-        sysLog("ERROR: Device name error");
-        ui->openCloseButton->setEnabled(true);
-        return;
-    }
-    QString dn="pn532_uart:";
-    dn += ui->comboBoxSerialDevice->currentText();
+    QString dn;
+    if(ui->rbUART->isChecked()){
+        if(ui->comboBoxSerialDevice->count()<=0){
+            sysLog("ERROR: No device found.");
+            ui->openCloseButton->setEnabled(true);
+            return;
+        }
+        if(ui->comboBoxSerialDevice->currentText().isEmpty()){
+            sysLog("ERROR: Device name error");
+            ui->openCloseButton->setEnabled(true);
+            return;
+        }
 
-    qDebug() << dn;
+        /** choose uart device */
+        dn = "pn532_uart:";
+        dn += ui->comboBoxSerialDevice->currentText();
+        qDebug() << dn;
+    }else if(ui->rbNET->isChecked()){
+        /* fix me: check text format */
+        dn = "pn532_net:";
+        dn += ui->lineEditIP->text() + ":" + ui->lineEditPort->text();
+    }
 
     nfc_init(&context);
     if (context == NULL) {
@@ -316,10 +340,16 @@ void MainWindow::openClose(void)
         return;
     }
 
-    sysLog(ui->comboBoxSerialDevice->currentText() + " opened.");
+    if(ui->rbUART->isChecked()){
+        /** print log info, diable uart widgets */
+        sysLog(ui->comboBoxSerialDevice->currentText() + " opened.");
+        ui->refreshButton->setEnabled(false);
+        ui->comboBoxSerialDevice->setEnabled(false);
+    }else if(ui->rbNET->isChecked()){
+        ui->lineEditIP->setEnabled(true);
+        ui->lineEditPort->setEnabled(true);
+    }
 
-    ui->refreshButton->setEnabled(false);
-    ui->comboBoxSerialDevice->setEnabled(false);
     ui->openCloseButton->setText("Close");
     ui->openCloseButton->setEnabled(true);
     ui->tabWidget->setEnabled(true);
@@ -364,7 +394,6 @@ void MainWindow :: test()
     qDebug() << "Index: " << ui->sectorComboBox->currentIndex();
 }
 
-#ifdef Q_OS_LINUX
 void MainWindow :: ndefPush(void)
 {
     ui->ndefPush->setEnabled(false);
@@ -408,7 +437,6 @@ void MainWindow :: ndefTextPulled(QString str)
     }
     ui->pullText->setText(str);
 }
-#endif /** Q_OS_LINUX */
 
 void MainWindow :: sysLog(QString str)
 {

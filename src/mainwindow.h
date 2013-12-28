@@ -1,18 +1,17 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <QtGlobal>
 #include <QMainWindow>
 #include <QTimer>
 #include <nfc/nfc.h>
 #include "pn532_extend_cmd.h"
 #include "mf1ics50writeblock.h"
 
-#ifdef Q_OS_LINUX
 #include "snepClient.h"
 #include "snepServer.h"
-#endif
 
-#define GNFC_VERSION        "0.1.1"
+#define GNFC_VERSION        "0.2.0"
 
 namespace Ui {
 class MainWindow;
@@ -57,14 +56,15 @@ private slots:
     /** About */
     void about(void);
 
-#ifdef Q_OS_LINUX
     /** ndef */
     void ndefPush(void);
     void ndefPushed(void);
     void ndefPull(void);
     void ndefPulled(void);
     void ndefTextPulled(QString str);
-#endif
+
+    /** uart or net device choose */
+    void deviceSelect(void);
 
 protected:
     void resizeEvent ( QResizeEvent * event );
@@ -101,11 +101,8 @@ private:
 
     int outputSeperatorLength;
 
-#ifdef Q_OS_LINUX
     snepClientThread *snepClient;
     snepServerThread *snepServer;
-#endif
-
 };
 
 #endif // MAINWINDOW_H
