@@ -13,7 +13,7 @@ GNFC is an OpenSource GUI NFC tool, it is based on QT and several nfc libraries(
 
 ## Supported Devices
 
-+ [Elechouse USB NFC Device]()
++ [Elechouse USB NFC Device](http://www.go2nfc.com)
 + [Elechouse WIFI NFC Device]()
 
 ## Latest Release
