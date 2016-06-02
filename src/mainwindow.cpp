@@ -529,7 +529,7 @@ void MainWindow::readBlock()
     }
     int i;
     for(i=0; tags[i]; i++){
-        if(freefare_get_tag_type(tags[i]) == CLASSIC_1K){
+        if(freefare_get_tag_type(tags[i]) == MIFARE_CLASSIC_1K){
             qDebug() << "Classic 1K card found.";
 
             if( 0 == mifare_classic_connect(tags[i]) ){
@@ -672,7 +672,7 @@ void MainWindow :: wbWrite(sectorData_t * sector)
     memcpy(key, keyByteArr.data(), keyByteArr.size());
     keyType = sector->key->type;
 
-    if(freefare_get_tag_type(tags[0]) == CLASSIC_1K){
+    if(freefare_get_tag_type(tags[0]) == MIFARE_CLASSIC_1K){
         sysLog("Classic 1K card found.");
         if( 0 == mifare_classic_connect(tags[0]) ){
             if(0 == mifare_classic_authenticate(tags[0], sector->sector*4+1, key, keyType) ){
@@ -776,7 +776,7 @@ void MainWindow :: wbRead(sectorData_t *sector)
     memcpy(key, keyByteArr.data(), keyByteArr.size());
     keyType = sector->key->type;
 
-    if(freefare_get_tag_type(tags[0]) == CLASSIC_1K){
+    if(freefare_get_tag_type(tags[0]) == MIFARE_CLASSIC_1K){
         sysLog("Classic 1K card found.");
         if( 0 == mifare_classic_connect(tags[0]) ){
             if(0 == mifare_classic_authenticate(tags[0], sector->sector*4+1, key, keyType) ){
@@ -900,7 +900,7 @@ void MainWindow :: resetBlock()
         return;
     }
 
-    if(freefare_get_tag_type(tags[0]) == CLASSIC_1K){
+    if(freefare_get_tag_type(tags[0]) == MIFARE_CLASSIC_1K){
         if( 0 == mifare_classic_connect(tags[0]) ){
             for(sector=0; sector<16; sector++){
                 for(block=0; block<4; block++){
